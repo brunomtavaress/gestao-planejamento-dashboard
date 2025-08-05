@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Xcelis - Gestão de Planejamento</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/gestao-planejamento.css">
+    <!-- Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Bibliotecas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Barra Lateral -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button class="toggle-sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="gestao-planejamento.html" class="active">
+                    <i class="fas fa-tasks"></i>
+                    <span>Gestão de Planejamento</span>
+                </a>
+                <a href="notificacoes.html">
+                    <i class="fas fa-bell"></i>
+                    <span>Notificações</span>
+                </a>
+                <a href="gestao-sla.html" class="provisoriamente-oculto">
+                    <i class="fas fa-bolt"></i>
+                    <span>Gestão de SLA</span>
+                </a>
+                <a href="metas.html" class="provisoriamente-oculto">
+                    <i class="fas fa-flag-checkered"></i>
+                    <span>Metas & Planos</span>
+                </a>
+                <a href="relatorios.html" class="provisoriamente-oculto">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Relatórios</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <h2>Xcelis</h2>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-content" style="display: flex; align-items: center; justify-content: space-between;">
+                    <h1 style="margin: 0; font-size: 1.5rem; text-align: left; flex: 1;">Gestão de Planejamento - Xcelis</h1>
+                    <div class="search-container" style="flex: 2; display: flex;">
+                        <input type="text" id="searchInput" placeholder="Buscar demandas..." style="width: 350px;">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+                <div class="top-actions">
+                    <span id="csv-loading" style="display:none; font-weight:bold; margin-right:16px; color:#3498db;">Carregando dados...</span>
+                    <div class="notification-bell-container">
+                        <a href="notificacoes.html" id="notificationLink" title="Ver Notificações">
+                            <i class="fas fa-bell"></i>
+                            <span id="notification-count" class="badge" style="display: none;">0</span>
+                        </a>
+                    </div>
+                    <button id="themeToggle" class="theme-toggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <a href="MODELO_IMPORTACAO.csv" download class="btn-primary" style="margin-right: 8px; display: flex; align-items: center;">
+                        <i class="fas fa-download"></i> Baixar Modelo CSV
+                    </a>
+                    <input type="file" id="fileInput" accept=".csv" style="display: none;">
+                    <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-upload"></i> Importar CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Seção Dashboard -->
+            <section id="dashboard" class="content-section active">
+                <div class="filters">
+                    <select id="filter-status">
+                        <option value="">Status</option>
+                    </select>
+                    <select id="filter-estado">
+                        <option value="">Estado</option>
+                    </select>
+                    <select id="filter-categoria">
+                        <option value="">Categoria</option>
+                    </select>
+                    <select id="filter-resp_atual">
+                        <option value="">Responsável Atual</option>
+                    </select>
+                    <select id="filter-atribuicao">
+                        <option value="">Analista Responsável</option>
+                    </select>
+                    <select id="filter-squad" class="multi-select" multiple>
+                        <option value="">Equipe</option>
+                    </select>
+                    <input type="date" id="filter-data-inicial" placeholder="Data Inicial">
+                    <input type="date" id="filter-data-final" placeholder="Data Final">
+                </div>
+                
+                <!-- KPIs -->
+                <div class="kpi-container">
+                    <!-- Card Moderno: Total de Demandas -->
+                    <div id="kpi-total-chamados" class="kpi-card-modern">
+                        <div class="kpi-icon-background icon-total">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-title">Total de Demandas</span>
+                            <span class="kpi-value-modern">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Moderno: Demandas Abertas Hoje -->
+                    <div id="kpi-abertos-hoje" class="kpi-card-modern">
+                        <div class="kpi-icon-background icon-abertos">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-title">Abertas Hoje</span>
+                            <span class="kpi-value-modern">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Moderno: Demandas Concluídas Hoje -->
+                    <div id="kpi-resolvidos-hoje" class="kpi-card-modern">
+                        <div class="kpi-icon-background icon-resolvidos">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-title">Concluídas Hoje</span>
+                            <span class="kpi-value-modern">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Moderno: Demandas YTD -->
+                    <div id="kpi-ytd" class="kpi-card-modern">
+                        <div class="kpi-icon-background icon-ytd">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-title">Demandas YTD</span>
+                            <span class="kpi-value-modern">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Moderno: Demandas na Fila -->
+                    <div id="kpi-fila" class="kpi-card-modern">
+                        <div class="kpi-icon-background icon-fila">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <div class="kpi-title-wrapper">
+                                <span class="kpi-title">Demandas na Fila</span>
+                                <div class="info-icon-wrapper">
+                                    <i class="fas fa-info-circle info-icon"></i>
+                                    <div class="info-box">
+                                        Soma de demandas com status:
+                                        <ul>
+                                            <li>Iniciado</li>
+                                            <li>Aberto</li>
+                                            <li>Vencido</li>
+                                            <li>Atenção</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="kpi-value-modern">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Moderno: Variação % Ano -->
+                    <div id="kpi-variacao" class="kpi-card-modern">
+                        <div class="kpi-icon-background icon-variacao">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-title">Variação % Ano</span>
+                            <span class="kpi-value-modern">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Demandas -->
+                <div class="table-container">
+                    <div class="detalhamento-header">
+                        <h2>Detalhamento de Demandas</h2>
+                        <div class="actions-container">
+                            <div class="actions-left">
+                                <span id="ultimaAtualizacao" class="ultima-atualizacao">Última atualização: --/-- --:--</span>
+                                <button id="refreshButton" class="btn btn-icon" title="Atualizar Dados">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div class="actions-right">
+                                <select id="registrosPorPagina">
+                                    <option value="20">20 registros</option>
+                                    <option value="50">50 registros</option>
+                                    <option value="100">100 registros</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <table id="chamadosTable" class="table">
+                        <thead>
+                            <tr>
+                                <th data-sort="numero" class="col-center">Ticket</th>
+                                <th data-sort="categoria" class="col-center">Categoria</th>
+                                <th data-sort="projeto" class="col-left">Cliente/Projeto</th>
+                                <th data-sort="resumo" class="col-left">Descrição</th>
+                                <th data-sort="squad" class="col-center">Equipe</th>
+                                <th data-sort="atribuicao" class="col-center">Analista Responsável</th>
+                                <th data-sort="resp_atual" class="col-center">Responsável Atual</th>
+                                <th data-sort="solicitante" class="col-center">Solicitante</th>
+                                <th data-sort="estado" class="col-center">Situação</th>
+                                <th data-sort="data_abertura" class="col-center">Abertura</th>
+                                <th data-sort="data_prometida" class="col-center">Data Prometida</th>
+                                <th data-sort="ultima_atualizacao" class="col-center">Última Atualização</th>
+                                <th data-sort="ordem_plnj" class="col-center">Ordem Planejamento</th>
+                                <th data-sort="tempoTotal" class="col-center">Tempo Decorrido</th>
+                                <th data-sort="status" class="col-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Linhas serão adicionadas dinamicamente -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- Botão Colunas posicionado no canto inferior esquerdo -->
+                    <div id="column-toggle-container">
+                        <button id="toggle-columns-btn" class="btn-primary">
+                            <i class="fas fa-columns"></i> Colunas
+                        </button>
+                        <div id="column-selection-panel" class="hidden">
+                            <h3>Exibir/Ocultar Colunas</h3>
+                            <div id="column-checkboxes">
+                                <!-- Checkboxes serão inseridos aqui via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pagination">
+                        <button id="prevPage" disabled>Anterior</button>
+                        <span id="pageInfo">Página 1</span>
+                        <button id="nextPage" disabled>Próxima</button>
+                    </div>
+                </div>
+
+                <!-- Gráficos -->
+                <div class="content-wrapper">
+                    <div class="chart-container">
+                        <canvas id="chamadosPorMes"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chamadosPorStatus"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chamadosPorProjeto"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chamadosPorSquad"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chamadosPorPrioridade"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chamadosPorAtribuicao"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="horasPorPrioridade"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chamadosPorHora"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="horasPorAtribuicao"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/gestao-planejamento.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <style>
+    /* Ajuste para tabela mais compacta */
+    .table-container table {
+        font-size: 13px;
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table-container th, .table-container td {
+        padding: 4px 8px;
+        max-width: 140px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Alinhamentos específicos para cada coluna */
+    .col-center {
+        text-align: center;
+    }
+    
+    .col-left {
+        text-align: left;
+    }
+    
+    .col-right {
+        text-align: right;
+    }
+
+    /* Container específico para os KPIs de SLA */
+    .kpi-container {
+        display: flex;
+        gap: 16px;
+        margin: 12px auto;
+        padding: 8px;
+        justify-content: center;
+    }
+    .kpi-container:first-of-type {
+        max-width: 900px;
+        margin: 12px auto;
+    }
+    .kpi-sla {
+        background: var(--card-bg, #fff);
+        color: var(--text-color, #2c3e50);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        min-width: 180px;
+        transition: transform 0.2s;
+        flex: 1;
+        max-width: 280px;
+    }
+    .kpi-sla:hover {
+        transform: translateY(-2px);
+    }
+    .kpi-sla h3 {
+        margin: 0 0 8px 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-color, #2c3e50);
+    }
+    .kpi-sla .kpi-value {
+        color: var(--primary-color, #3498db);
+        font-size: 1.7rem;
+        font-weight: bold;
+        margin: 8px 0;
+    }
+    .kpi-sla .kpi-legend {
+        font-size: 0.85rem;
+        color: var(--text-muted, #7f8c8d);
+        display: block;
+    }
+
+    /* Estilos para o sino de notificação */
+    .notification-bell-container {
+        position: relative;
+        margin-right: 16px;
+        display: flex;
+        align-items: center;
+    }
+    .notification-bell-container .fa-bell {
+        font-size: 1.2rem;
+        color: var(--text-color);
+        cursor: pointer;
+    }
+    .notification-bell-container .badge {
+        position: absolute;
+        top: -5px;
+        right: -10px;
+        background-color: #e74c3c;
+        color: white;
+        border-radius: 50%;
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        border: 1px solid var(--card-bg);
+    }
+    .btn-secondary {
+        background-color: var(--text-muted);
+        color: white !important;
+        padding: 5px 10px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 0.9em;
+        border: none;
+        cursor: pointer;
+    }
+    </style>
+</body>
+</html>
